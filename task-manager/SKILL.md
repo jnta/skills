@@ -26,6 +26,7 @@ This skill operates within a standardized `doc/` directory structure at the root
 *   **Atomicity:** Every item in the `tasks` array must represent a micro-action (e.g., creating one file, editing one module). Never group disparate structural changes into a single task.
 *   **Target Scoping:** `scope.target_files` must strictly list explicit file paths relative to the project root directory.
 *   **Phase Gates:** Every phase object must culminate in a `phase_gate` defining the automated testing, validation, or linting requirements required to unlock the subsequent phase loop.
+*   **Test-Driven Acceptance:** The `acceptance_criteria` for any code-related task MUST explicitly include the creation and passing of relevant automated tests. If the task involves non-code changes (e.g., Docker configuration), testing requirements may be omitted.
 
 ### Expected JSON Output Schema
 
@@ -52,7 +53,7 @@ This skill operates within a standardized `doc/` directory structure at the root
           },
           "instructions": "string (Detailed step-by-step implementation instructions. Markdown formatting may be used inside this string field)",
           "acceptance_criteria": [
-            "string (Binary, testable verification conditions)"
+            "string (Binary, testable verification conditions. MUST include writing/passing tests if the task involves code changes)"
           ],
           "output_format": {
             "type": "file_creation" | "file_modification" | "dependency_installation",
