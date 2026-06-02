@@ -1,4 +1,4 @@
-# Cerebro AI Skills Ecosystem
+# AI Skills Ecosystem
 
 This repository contains a specialized suite of AI agent skills designed to automate and enforce a highly structured, phased software development lifecycle. These skills operate together as an "AI Agent Assembly Line," translating high-level architectural decisions into strictly scoped, quality-gated code modifications.
 
