@@ -14,22 +14,49 @@ Agent runs: `qmd query "<text>" --json --all` -> classify -> create/append -> re
 
 ### 1. Search & Classify
 
-- If user specified a category (Projects/Areas/Resources/Archives), set folder accordingly
-- If not, infer category from qmd results (pick the PARA folder most related notes are in; fallback to Resources)
+- If user explicitly specified a category (e.g. `capture Projects <text>`), set `OVERRIDE_CATEGORY` and **skip all algorithmic routing** — the file goes directly to that folder with no PARA link injection.
+- Otherwise, run qmd search and proceed to algorithmic routing below.
 
-### 2. Decision Matrix
+### 2. Decision Matrix (Intent Matching)
 
 Parse scores from qmd JSON. Let `max_score` be the highest score found:
 
 | Score | Action |
 |-------|--------|
-| `>= 0.85` AND intent is continuation/update | **Append** to existing file |
-| `0.65` to `< 0.85` | **Create new** + link to matched notes |
-| `< 0.65` | **Create new** (no links) |
+| `>= 0.85` AND intent is continuation/update | **Append** to existing file → skip creation, go to re-index |
+| `0.65` to `< 0.85` | **Create new** — proceed to PARA Routing |
+| `< 0.65` | **Create new** (no links) — proceed to PARA Routing |
 
-### 3. Create new file
+### 3. Create new file (with PARA Routing substep)
 
 Name: `YYYYMMDDHHMM-lowercase-slug.md` under the appropriate PARA folder.
+
+#### Substep: PARA Routing Rules
+
+Evaluate the **same** qmd JSON array against metadata dimensions:
+
+1. **Project Match** — Is there a note where `type == "project"` and `score >= 0.75`?
+   - `SAVE_PATH = ./vault/Projects/`
+   - `PRIMARY_LINK = [[Project-Name]]`
+   - `ACTIVE_PROJECT = Project-Name`
+   - STOP — do not evaluate Area.
+
+2. **Area Match** — (if no Project matched) Is there a note where `type == "area"` and `score >= 0.75`?
+   - `SAVE_PATH = ./vault/Areas/`
+   - `PRIMARY_LINK = [[Area-Name]]`
+
+3. **Default** — Neither matched:
+   - `SAVE_PATH = ./vault/Resources/`
+   - `PRIMARY_LINK = null`
+
+4. **Displacement Check** — Only if `ACTIVE_PROJECT` is defined (Step 1 succeeded):
+   - Scrutinize all existing notes in results.
+   - IF any existing note currently in `/Areas/` or `/Resources/` scores `>= 0.88`:
+     - Execute physical `mv` to `./vault/Projects/`
+     - Append `* [[ACTIVE_PROJECT]]` to that existing note's `## Relationships`
+     - Force this new capture's `SAVE_PATH` to `./vault/Projects/`
+
+#### Template
 
 ```markdown
 ---
@@ -46,14 +73,15 @@ tags: []
 Content body.
 
 ## Relationships
-
-* [[timestamp-slug-of-related-note]]
+* [[PRIMARY_LINK]]
+* [[secondary-matches-between-065-and-074]] (Tangential Reference)
 ```
 
 Rules:
 - `type`: `fleeting` for raw capture, `literature` for summarized source, `permanent` for distilled thought
 - PARA category is folder-based only — do NOT put in frontmatter
-- Links go under `## Relationships` in the body (Obsidian graph view needs them there)
+- PRIMARY_LINK (from PARA routing) gets the top bullet; secondary matches (0.65–0.74) go below
+- Soft link (0.75–0.87): leave existing note in place, cross-reference only
 
 ### 4. Append (score >= 0.85, continuation)
 
